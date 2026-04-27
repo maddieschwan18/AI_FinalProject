@@ -4,6 +4,17 @@ import statistics
 import pandas
 import time
 
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Hello, world!"
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
 def create_game():
     temp_grid = [i for i in range((n * m))]
     global grid
@@ -43,7 +54,7 @@ def choose_move(possible_positions, player):
             best_moves = [pos]
         elif score == best_score:
             best_moves.append(pos)
-    return random.choice(best_moves)  # keeps some variability
+    return random.choice(best_moves)
 
 def get_runs(x_input, y_input):
     x_coord = x_input
