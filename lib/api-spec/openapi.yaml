@@ -1,0 +1,167 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: ai
+    description: AI agent operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /ai/move:
+    post:
+      operationId: getAiMove
+      tags: [ai]
+      summary: Get the AI agent's next move
+      description: |
+        Sends the current board state to the Python AI agent and returns the
+        cell (row, column) where the AI wants to play next.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiMoveRequest"
+      responses:
+        "200":
+          description: AI move
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiMoveResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: AI agent error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    CellValue:
+      type: string
+      enum: ["", "X", "O"]
+      description: A single cell — empty, "X", or "O".
+    Player:
+      type: string
+      enum: ["X", "O"]
+      description: Which player the AI is playing as.
+    AiMoveRequest:
+      type: object
+      properties:
+        rows:
+          type: integer
+          minimum: 2
+          maximum: 10
+        cols:
+          type: integer
+          minimum: 2
+          maximum: 10
+        depth:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 1
+          description: |
+            Depth (z) of the board. 1 = 2D game, >1 = 3D game.
+        w:
+          type: integer
+          minimum: 1
+          maximum: 4
+          default: 1
+          description: |
+            Size along the 4th dimension (w). 1 = 2D/3D game, >1 = 4D game.
+        winLen:
+          type: integer
+          minimum: 2
+          maximum: 10
+          default: 3
+          description: |
+            Number of consecutive matching markers required to win.
+            Forwarded to the Python agent so it can recognize wins/blocks
+            for the active game's win-length setting.
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          default: hard
+          description: |
+            How strong the AI should play. The agent blends its heuristic move
+            with a uniformly-random move using this probability of playing the
+            heuristic (optimal) move:
+              easy   = 0.10  (≈ 90% random — barely above random)
+              medium = 0.525 (exact midpoint between easy and hard)
+              hard   = 0.95  (≈ 5% random — barely below perfect)
+        board:
+          type: array
+          items:
+            $ref: "#/components/schemas/CellValue"
+          description: |
+            Flattened board of length rows*cols*depth*w.
+            Index = w*(rows*cols*depth) + z*(rows*cols) + y*cols + x,
+            where y is row, x is column, z is layer, w is hyperslice.
+        player:
+          $ref: "#/components/schemas/Player"
+      required:
+        - rows
+        - cols
+        - board
+        - player
+    AiMoveResponse:
+      type: object
+      properties:
+        row:
+          type: integer
+          minimum: 0
+        col:
+          type: integer
+          minimum: 0
+        z:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Layer index (z). Omit or 0 for 2D games.
+        w:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Hyperslice index (w). Omit or 0 for 2D/3D games.
+      required:
+        - row
+        - col
